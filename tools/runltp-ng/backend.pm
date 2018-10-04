@@ -351,13 +351,15 @@ sub ssh_start
 	my ($self) = @_;
 	my $host = $self->{'ssh_host'};
 	my $user = $self->{'ssh_user'};
+	my $key = $self->{'ssh_key'};
 
 	msg("Waiting for sshd to accept connections\n");
 	while (system("echo | nc -w1 $host 22 >/dev/null 2>&1")) {
 		sleep(1);
 	}
 
-	my $cmdline = "export TERM=dumb; script -f -c 'ssh $user\@$host' /dev/null";
+	my $sshcmd = 'ssh ' . ($key ? "-i $key " : " ") . "$user\@$host";
+	my $cmdline = "export TERM=dumb; script -f -c '$sshcmd' /dev/null";
 
 	msg("Starting ssh: $cmdline\n");
 
@@ -375,8 +377,10 @@ sub ssh_start
 
 	msg("Waiting for prompt\n");
 
-	wait_regexp($self, qr/[Pp]assword:/);
-	run_string($self, "$self->{'root_password'}");
+	unless ($key){
+		wait_regexp($self, qr/[Pp]assword:/);
+		run_string($self, $self->{'root_password'});
+	}
 	sleep(1); #hack wait for prompt
 	wait_prompt($self);
 	if ($user ne 'root') {
@@ -411,6 +415,7 @@ my $ssh_params = [
 	['password', 'root_password', "Remote machine root password"],
 	['host', 'ssh_host', "Remote machine hostname or IP"],
 	['user', 'ssh_user', "Remote user, if other then root use sudo to get root"],
+	['key_file', 'ssh_key', 'File for public key authentication'],
 	['serial_relay_port', 'serial_relay_port', "Serial relay poor man's reset dongle port"],
 ];
 
@@ -421,7 +426,9 @@ sub ssh_init
 	parse_params(\%backend, "ssh", $ssh_params, @_);
 
 	die("ssh:host must be set!") unless defined($backend{'ssh_host'});
-	die("ssh:root_password must be set!") unless defined($backend{'root_password'});
+	die("ssh:password or ssh:key_file must be set!")
+		unless (defined($backend{'root_password'})
+			|| defined($backend{'ssh_key'}));
 	$backend{'ssh_user'} //= 'root';
 
 	$backend{'start'} = \&ssh_start;
