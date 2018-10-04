@@ -351,13 +351,8 @@ sub ssh_start
 	my ($self) = @_;
 	my $host = $self->{'ssh_host'};
 
-	msg("Waiting for $host to appear\n");
-	while (system("ping -c 1 $host >/dev/null 2>&1")) {
-		sleep(1);
-	}
-
 	msg("Waiting for sshd to accept connections\n");
-	while (system("echo | nc $host 22 >/dev/null 2>&1")) {
+	while (system("echo | nc -w1 $host 22 >/dev/null 2>&1")) {
 		sleep(1);
 	}
 
