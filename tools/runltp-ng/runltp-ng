@@ -34,6 +34,7 @@ my $sysinfo;
 my $verbose;
 my $list;
 my $run;
+my $exclude;
 my $install;
 
 GetOptions("backend=s" => \$backend_opts,
@@ -42,6 +43,7 @@ GetOptions("backend=s" => \$backend_opts,
            "sysinfo" => \$sysinfo,
            "list" => \$list,
            "run=s" => \$run,
+           "exclude=s" => \$exclude,
            "install=s" => \$install,
            "verbose" => \$verbose)
 or die("Error in argument parsing!\n");
@@ -54,6 +56,7 @@ if ($help) {
 	print("--list             : List test groups\n\n");
 	print("--verbose          : Enables verbose mode\n\n");
 	print("--run=testgroup    : Execute group of tests\n\n");
+	print("--exclude=regex    : Exclude tests from test group\n\n");
 	print("--install=hash/tag : Checkout LTP from git, compile it and install\n\n");
 	print("Backend help\n------------\n\n");
 	print("--backend=sh|...[:param=val]...\n\n");
@@ -90,7 +93,7 @@ if ($install) {
 if ($run) {
 	my %results;
 	$results{'sysinfo'} = utils::collect_sysinfo($backend);
-	my ($stats, $test_results) = utils::run_ltp($backend, $run);
+	my ($stats, $test_results) = utils::run_ltp($backend, $run, $exclude);
 	$results{'tests'} = {'stats' => $stats, 'results' => $test_results};
 	results::writelog(\%results, "$logname.json");
 	results::writelog_html(\%results, "$logname.html");
