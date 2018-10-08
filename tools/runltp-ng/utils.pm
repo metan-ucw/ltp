@@ -285,8 +285,14 @@ sub reboot
 	my ($self, $reason) = @_;
 
 	print("$reason, attempting to reboot...\n");
-	backend::reboot($self);
-	setup_ltp_run($self);
+	eval {
+		backend::reboot($self);
+		setup_ltp_run($self);
+	};
+	return 1 unless($@);
+
+	print "Reboot FAILED! $/";
+	print $@;
 }
 
 sub run_ltp
@@ -349,10 +355,12 @@ sub run_ltp
 		}
 
 		if (!defined($ret)) {
-			reboot($self, 'Machine stopped respoding');
+			last unless (reboot($self, 'Machine stopped respoding'));
 		} elsif ($ret) {
 			my $tainted = check_tainted($self);
-			reboot($self, 'Kernel was tained') if ($tainted != $start_tainted);
+			if ($tainted != $start_tainted) {
+				last unless(reboot($self, 'Kernel was tained'));
+			}
 		}
 	}
 

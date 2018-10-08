@@ -28,6 +28,7 @@ use POSIX ":sys_wait_h";
 use Fcntl;
 use Errno;
 use IO::Poll qw(POLLIN);
+use Text::ParseWords;
 
 use log;
 
@@ -417,7 +418,21 @@ my $ssh_params = [
 	['user', 'ssh_user', "Remote user, if other then root use sudo to get root"],
 	['key_file', 'ssh_key', 'File for public key authentication'],
 	['serial_relay_port', 'serial_relay_port', "Serial relay poor man's reset dongle port"],
+	['reset_command', 'reset_command', 'If SUT hang, given command is '
+		. 'executed to reset. If command exit with error, test gets '
+		. 'stopped otherwise ssh connection will be reinitalized. ']
 ];
+
+sub ssh_reset_command
+{
+	my ($self) = @_;
+	my $cmd = $self->{'reset_command'};
+
+	my $out = qx/$cmd/;
+	if ($? != 0){
+		die($out);
+	}
+}
 
 sub ssh_init
 {
@@ -435,6 +450,9 @@ sub ssh_init
 	$backend{'stop'} = \&ssh_stop;
 	if ($backend{'serial_relay_port'}) {
 		$backend{'force_stop'} = \&ssh_force_stop;
+	}
+	elsif ($backend{'reset_command'}) {
+		$backend{'force_stop'} = \&ssh_reset_command;
 	}
 	$backend{'name'} = 'ssh';
 	$backend{'buf'} = '';
@@ -491,7 +509,7 @@ sub new
 {
 	my ($opts) = @_;
 
-	my @backend_params = split(':', $opts);
+	my @backend_params = quotewords(':', 0, $opts);
 	my $backend_type = shift @backend_params;
 
 	msg("Running test with $backend_type parameters '@backend_params'\n");
