@@ -350,13 +350,14 @@ sub ssh_start
 {
 	my ($self) = @_;
 	my $host = $self->{'ssh_host'};
+	my $user = $self->{'ssh_user'};
 
 	msg("Waiting for sshd to accept connections\n");
 	while (system("echo | nc -w1 $host 22 >/dev/null 2>&1")) {
 		sleep(1);
 	}
 
-	my $cmdline = "export TERM=dumb; script -f -c 'ssh root@" . "$host' /dev/null";
+	my $cmdline = "export TERM=dumb; script -f -c 'ssh $user\@$host' /dev/null";
 
 	msg("Starting ssh: $cmdline\n");
 
@@ -378,13 +379,19 @@ sub ssh_start
 	run_string($self, "$self->{'root_password'}");
 	sleep(1); #hack wait for prompt
 	wait_prompt($self);
+	if ($user ne 'root') {
+		run_string($self, 'sudo /bin/sh');
+		wait_prompt($self);
+	}
 }
 
 sub ssh_stop
 {
 	my ($self) = @_;
+	my $user = $self->{'ssh_user'};
 
 	run_string($self, "exit");
+	run_string($self, "exit") if ($user ne 'root');
 
 	waitpid($self->{'pid'}, 0);
 }
@@ -403,6 +410,7 @@ sub ssh_force_stop
 my $ssh_params = [
 	['password', 'root_password', "Remote machine root password"],
 	['host', 'ssh_host', "Remote machine hostname or IP"],
+	['user', 'ssh_user', "Remote user, if other then root use sudo to get root"],
 	['serial_relay_port', 'serial_relay_port', "Serial relay poor man's reset dongle port"],
 ];
 
@@ -414,6 +422,7 @@ sub ssh_init
 
 	die("ssh:host must be set!") unless defined($backend{'ssh_host'});
 	die("ssh:root_password must be set!") unless defined($backend{'root_password'});
+	$backend{'ssh_user'} //= 'root';
 
 	$backend{'start'} = \&ssh_start;
 	$backend{'stop'} = \&ssh_stop;
