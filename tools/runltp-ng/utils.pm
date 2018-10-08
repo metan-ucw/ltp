@@ -291,7 +291,7 @@ sub reboot
 
 sub run_ltp
 {
-	my ($self, $runtest) = @_;
+	my ($self, $runtest, $exclude) = @_;
 	my @results;
 	my %reshash;
 
@@ -321,6 +321,7 @@ sub run_ltp
 		next if m/^\s*($|#)/;
 		chomp;
 		my ($tid, $c) = split(/\s/, $_, 2);
+		next if ($exclude && $tid =~ $exclude);
 		print("Executing $tid\n");
 		my $test_start_time = clock_gettime(CLOCK_MONOTONIC);
 		my ($ret, @log) = backend::run_cmd($self, "$c", 600);
