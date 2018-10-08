@@ -385,7 +385,7 @@ sub ssh_start
 	sleep(1); #hack wait for prompt
 	wait_prompt($self);
 	if ($user ne 'root') {
-		run_string($self, "sudo su");
+		run_string($self, 'sudo /bin/sh');
 		wait_prompt($self);
 	}
 }
@@ -393,12 +393,10 @@ sub ssh_start
 sub ssh_stop
 {
 	my ($self) = @_;
-	my $user = $self->{'ssh_user'}; 
+	my $user = $self->{'ssh_user'};
 
 	run_string($self, "exit");
-	if ($user ne 'root') {
-		run_string($self, "exit");
-	}
+	run_string($self, "exit") if ($user ne 'root');
 
 	waitpid($self->{'pid'}, 0);
 }
