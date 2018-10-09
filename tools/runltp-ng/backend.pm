@@ -532,7 +532,7 @@ sub read_file
 
 	if ($res[0] != 0) {
 		print("Failed to read file $path");
-		return undef;
+		return;
 	}
 
 	return @res[2 .. $#res];
