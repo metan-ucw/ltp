@@ -179,6 +179,24 @@ sub run_cmd
 	wantarray? ($ret, @log) : $ret;
 }
 
+sub run_cmds
+{
+	my ($self, $cmds,%args) = @_;
+	my @log;
+
+	push(@log, {cmd=>'', ret=>0, log=>''}) unless (@{$cmds});
+
+	for my $cmd (@{$cmds}) {
+		my @ret = run_cmd($self, $cmd, $args{timeout});
+		my @output = @ret[1 .. $#ret];
+		push(@log, {cmd=>$cmd, ret=>$ret[0], log => \@output});
+
+		return wantarray? @log : $ret[0]
+		unless (defined($ret[0]) && $ret[0] == 0);
+	}
+	return wantarray? @log : 0;
+}
+
 sub start
 {
 	my ($self) = @_;
@@ -522,7 +540,9 @@ sub set_logfile
 sub check_cmd
 {
 	my ($self, $cmd) = @_;
-	return run_cmd($self, $cmd) != 127;
+	my $ret = run_cmd($self, $cmd);
+	return unless(defined($ret));
+	return $ret != 127;
 }
 
 sub read_file
