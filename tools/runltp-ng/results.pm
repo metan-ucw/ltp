@@ -29,6 +29,7 @@ sub json_print_string
 
 	$str =~ s/\\/\\\\/g;
 	$str =~ s/"/\\"/g;
+	$str =~ s/[^[:print:]]//g;
 
 	print($fh '"' . $str . '"');
 }
