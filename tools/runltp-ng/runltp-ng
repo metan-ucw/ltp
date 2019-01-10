@@ -22,6 +22,7 @@ use strict;
 use warnings;
 use Getopt::Long;
 
+use lib './';
 use log;
 use backend;
 use utils;
