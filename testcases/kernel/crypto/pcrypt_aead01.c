@@ -69,4 +69,9 @@ static struct tst_test test = {
 	.test_all = run,
 	.cleanup = cleanup,
 	.needs_root = 1,
+	.tags = (const struct tst_tag[]) {
+		{"linux-git", "d76c68109f37"},
+		{"CVE", "2017-5754"},
+		{NULL, NULL}
+	}
 };
