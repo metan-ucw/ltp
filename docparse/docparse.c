@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <libgen.h>
+#include <ctype.h>
 
 #include "data_storage.h"
 
@@ -18,16 +19,44 @@ static void oneline_comment(FILE *f)
 	} while (c != '\n');
 }
 
-static void multiline_comment(FILE *f, int parse)
+static const char *eat_asterisk(const char *c)
+{
+	unsigned int i = 0;
+
+	while (isspace(c[i]))
+		i++;
+
+	if (c[i] == '*')
+		return &c[i+1];
+
+	return c;
+}
+
+static void multiline_comment(FILE *f, struct data_node *doc)
 {
 	int c;
 	int state = 0;
+	char buf[4096];
+	unsigned int bufp = 0;
 
 	for (;;) {
 		c = getc(f);
 
-		if (parse)
-			printf("%c", c);
+		if (doc) {
+			if (c == '\n') {
+				struct data_node *line;
+				buf[bufp] = 0;
+				line = data_node_string(eat_asterisk(buf));
+				data_node_array_add(doc, line);
+				bufp = 0;
+				continue;
+			}
+
+			if (bufp + 1 >= sizeof(buf))
+				continue;
+
+			buf[bufp++] = c;
+		}
 
 		switch (state) {
 		case 0:
@@ -50,9 +79,9 @@ static void multiline_comment(FILE *f, int parse)
 
 }
 
-static const char doc_prefix[] = "!doc";
+static const char doc_prefix[] = "\\\n";
 
-static void maybe_doc_comment(FILE *f)
+static void maybe_doc_comment(FILE *f, struct data_node *doc)
 {
 	int c, i;
 
@@ -65,14 +94,14 @@ static void maybe_doc_comment(FILE *f)
 		if (c == '*')
 			ungetc(c, f);
 
-		multiline_comment(f, 0);
+		multiline_comment(f, NULL);
 		return;
 	}
 
-	multiline_comment(f, 1);
+	multiline_comment(f, doc);
 }
 
-static void maybe_comment(FILE *f)
+static void maybe_comment(FILE *f, struct data_node *doc)
 {
 	int c = getc(f);
 
@@ -81,7 +110,7 @@ static void maybe_comment(FILE *f)
 		oneline_comment(f);
 	break;
 	case '*':
-		maybe_doc_comment(f);
+		maybe_doc_comment(f, doc);
 	break;
 	default:
 		ungetc(c, f);
@@ -89,7 +118,7 @@ static void maybe_comment(FILE *f)
 	}
 }
 
-const char *next_token(FILE *f)
+const char *next_token(FILE *f, struct data_node *doc)
 {
 	size_t i = 0;
 	static char buf[4096];
@@ -132,7 +161,7 @@ const char *next_token(FILE *f)
 			buf[i++]=c;
 		break;
 		case '/':
-			maybe_comment(f);
+			maybe_comment(f, doc);
 		break;
 		case '"':
 			if (in_str)
@@ -163,7 +192,7 @@ static int parse_array(FILE *f, struct data_node *node)
 	const char *token;
 
 	for (;;) {
-		if (!(token = next_token(f)))
+		if (!(token = next_token(f, NULL)))
 			return 1;
 
 		if (!strcmp(token, "{")) {
@@ -187,7 +216,7 @@ static int parse_array(FILE *f, struct data_node *node)
 	return 0;
 }
 
-static int parse_test_struct(FILE *f, struct data_node *node)
+static int parse_test_struct(FILE *f, struct data_node *doc, struct data_node *node)
 {
 	const char *token;
 	char *id = NULL;
@@ -195,7 +224,7 @@ static int parse_test_struct(FILE *f, struct data_node *node)
 	struct data_node *ret;
 
 	for (;;) {
-		if (!(token = next_token(f)))
+		if (!(token = next_token(f, doc)))
 			return 1;
 
 		if (!strcmp(token, "}"))
@@ -263,8 +292,9 @@ static struct data_node *parse_file(const char *fname)
 	FILE *f = fopen(fname, "r");
 
 	struct data_node *res = data_node_hash();
+	struct data_node *doc = data_node_array();
 
-	while ((token = next_token(f))) {
+	while ((token = next_token(f, doc))) {
 		if (state < 6 && !strcmp(tokens[state], token))
 			state++;
 		else
@@ -274,7 +304,15 @@ static struct data_node *parse_file(const char *fname)
 			continue;
 
 		found = 1;
-		parse_test_struct(f, res);
+		parse_test_struct(f, doc, res);
+	}
+
+
+	if (data_node_array_len(doc)) {
+		data_node_hash_add(res, "doc", doc);
+		found = 1;
+	} else {
+		data_node_free(doc);
 	}
 
 	fclose(f);

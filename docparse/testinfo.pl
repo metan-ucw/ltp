@@ -164,6 +164,7 @@ sub to_html
 	printf("    <th>All filesystems</th>\n");
 	printf("    <th>CVE</td>\n");
 	printf("    <th>Linux commit</th>\n");
+	printf("    <th>Description</th>\n");
 	printf("   </tr>\n");
 
 	foreach my $key (sort(keys %$json)) {
@@ -224,6 +225,18 @@ sub to_html
 				print("<a href=\"$link\">$h</a> ");
 			}
 			print("</td>\n");
+		} else {
+			print("    <td></td>\n");
+		}
+
+		my $doc = $json->{$key}->{'doc'};
+
+		if ($doc) {
+			print("    <td>\n");
+			for my $line (@$doc) {
+				print("     $line<br>\n");
+			}
+			print("    </td>\n");
 		} else {
 			print("    <td></td>\n");
 		}

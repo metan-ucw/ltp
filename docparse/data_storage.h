@@ -190,6 +190,14 @@ static inline int data_node_array_add(struct data_node *self, struct data_node *
 	return 0;
 }
 
+static inline unsigned int data_node_array_len(struct data_node *self)
+{
+	if (self->type != DATA_ARRAY)
+		return 0;
+
+	return self->array.array_used;
+}
+
 static inline void data_print_padd(unsigned int i)
 {
 	while (i-- > 0)
