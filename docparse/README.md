@@ -105,6 +105,101 @@ This process produces one big JSON file that with metadata for all tests that
 is then installed along with the testcases which then would be used by the
 testrunner.
 
+The test requirements are stored in the tst\_test structure either as a
+bitflags, integers or arrays of strings:
+
+```c
+struct tst_test test = {
+	...
+	/* tests needs to run with UID=1 */
+	.needs_root = 1,
+
+	/*
+	 * Tests needs a block device at least 1024MB in size and also
+	 * mkfs.ext4 installed.
+	 */
+	.needs_device = 1,
+	.dev_min_size = 1024,
+	.dev_fs_type = ext4,
+
+	/* Indicates that the test is messing with system wall clock */
+	.restore_wallclock = 1,
+
+	/* Tests needs uinput either compiled in or loaded as a module */
+	.needs_drivers = (const char *[]) {
+		"uinput",
+		NULL
+	},
+
+	/* Tests needs enabled kernel config flags */
+	.needs_kconfigs = (const char *[]) {
+		"CONFIG_X86_INTEL_UMIP=y",
+		NULL
+	},
+
+	/* Additional array of key value pairs */
+	.tags = (const struct tst_tag[]) {
+                {"linux-git", "43a6684519ab"},
+                {"CVE", "2017-2671"},
+                {NULL, NULL}
+        }
+};
+```
+
+The test documentation is stored in a special comment such as:
+
+```
+/*\
+ * Test description
+ *
+ * This is a test description.
+ * Consisting of several lines.
+\*/
+```
+
+Which will yield following json output:
+
+```json
+ "testcaseXY.c": {
+  "needs_root": "1",
+  "needs_device": "1",
+  "dev_min_size": "1024",
+  "dev_fs_type": "ext4",
+  "restore_wallclock": "1",
+  "needs_drivers": [
+    "uinput",
+    "NULL"
+  ],
+  "needs_kconfigs": [
+    "CONFIG_X86_INTEL_UMIP=y",
+    "NULL"
+  ],
+  "tags": [
+    [
+     "linux-git",
+     "43a6684519ab"
+    ],
+    [
+     "CVE",
+     "2017-2671"
+    ],
+    [
+     "NULL",
+     "NULL"
+    ]
+   ],
+  "doc": [
+    " Test description",
+    "",
+    " This is a test description.",
+    " Consisting of several lines."
+  ],
+  "fname": "testcases/kernel/syscalls/foo/testcaseXY.c"
+ },
+```
+
+The final JSON file is an array of test descriptions such as this one.
+
 Open Points
 ===========
 
